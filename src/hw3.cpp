@@ -8,25 +8,6 @@
 
 using namespace hw3;
 
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
-
-const char *vertexShaderSource = "#version 330 core\n"
-                                 "layout (location = 0) in vec3 aPos;\n"
-                                 "uniform mat4 transform;\n"
-                                 "void main()\n"
-                                 "{\n"
-                                 "   gl_Position = transform * vec4(aPos, 1.0);\n"
-                                 "}\0";
-
-const char *fragmentShaderSource = "#version 330 core\n"
-                                   "out vec4 FragColor;\n"
-                                   "void main()\n"
-                                   "{\n"
-                                   "   FragColor = vec4(0.9f, 0.4f, 0.4f, 1.0f);\n"
-                                   "}\n\0";
-
-
 void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
@@ -55,11 +36,54 @@ void checkCompileErrors(GLuint shader, std::string type) {
     }
 }
 
+// Function to compile a shader and check for errors
+void compileShader(GLuint shader) {
+    glCompileShader(shader);
+    checkCompileErrors(shader, shader == GL_VERTEX_SHADER ? "VERTEX" : "FRAGMENT");
+}
+
+// Function to build and compile the shader program
+GLuint buildAndCompileShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
+    // Vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
+    compileShader(vertexShader);
+
+    // Fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
+    compileShader(fragmentShader);
+
+    // Link shaders
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    checkCompileErrors(shaderProgram, "PROGRAM");
+
+    // Delete shaders as they're linked into our program now and no longer necessary
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return shaderProgram;
+}
+
+glm::mat4 createTransformationMatrix(int screenWidth, int screenHeight) {
+    glm::mat4 transform = glm::mat4(1.0f);
+    float aspectRatio = (float)screenWidth / (float)screenHeight;
+    glm::mat4 projection = glm::ortho(-aspectRatio, aspectRatio, -1.0f, 1.0f, -1.0f, 1.0f);
+    transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
+    transform = projection * transform;
+    return transform;
+}
+
 /**
  * @brief HW 3.1: Render a OpenGL window
  * @param params Unused
  */
 void hw_3_1(const std::vector<std::string>& params) {
+    const unsigned int SCR_WIDTH = 800;
+    const unsigned int SCR_HEIGHT = 600;
     // Initialize GLFW
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
@@ -114,6 +138,22 @@ void hw_3_1(const std::vector<std::string>& params) {
  * @param params Unused
  */
 void hw_3_2(const std::vector<std::string> &params) {
+    const unsigned int SCR_WIDTH = 800;
+    const unsigned int SCR_HEIGHT = 600;
+    const char *vertexShaderSource = "#version 330 core\n"
+                                     "layout (location = 0) in vec3 aPos;\n"
+                                     "uniform mat4 transform;\n"
+                                     "void main()\n"
+                                     "{\n"
+                                     "   gl_Position = transform * vec4(aPos, 1.0);\n"
+                                     "}\0";
+
+    const char *fragmentShaderSource = "#version 330 core\n"
+                                       "out vec4 FragColor;\n"
+                                       "void main()\n"
+                                       "{\n"
+                                       "   FragColor = vec4(0.9f, 0.4f, 0.4f, 1.0f);\n"
+                                       "}\n\0";
     // Initialize GLFW
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -141,24 +181,8 @@ void hw_3_2(const std::vector<std::string> &params) {
     }
 
     // Build and compile our shader program
-    // Vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    glCompileShader(vertexShader);
-    checkCompileErrors(vertexShader, "VERTEX");
+    GLuint shaderProgram = buildAndCompileShaderProgram(vertexShaderSource, fragmentShaderSource);
 
-    // Fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    glCompileShader(fragmentShader);
-    checkCompileErrors(fragmentShader, "FRAGMENT");
-
-    // Link shaders
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    checkCompileErrors(shaderProgram, "PROGRAM");
 
     float vertices[] = {
             // Right triangle vertices
@@ -194,11 +218,7 @@ void hw_3_2(const std::vector<std::string> &params) {
         glUseProgram(shaderProgram);
 
         // Create transformations
-        glm::mat4 transform = glm::mat4(1.0f);
-        float aspectRatio = (float)SCR_WIDTH / (float)SCR_HEIGHT;
-        glm::mat4 projection = glm::ortho(-aspectRatio, aspectRatio, -1.0f, 1.0f, -1.0f, 1.0f);
-        transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.0, 0.0, 1.0));
-        transform = projection * transform;
+        glm::mat4 transform = createTransformationMatrix(SCR_WIDTH, SCR_HEIGHT);
 
         // Get the transformation uniform location and set the transformation matrix
         unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
