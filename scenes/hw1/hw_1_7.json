@@ -1,0 +1,78 @@
+{
+  "resolution": [2048, 2048],
+  "background": [0.5, 0.5, 0.5],
+  "objects": [
+    {
+      "type": "circle",
+      "center": [0, 0],
+      "radius": 1,
+      "color": [0.8, 0.8, 0.2],
+      "transform": [
+        {"scale": [400, 400]},
+        {"translate": [512, 512]}
+      ]
+    },
+    {
+      "type": "rectangle",
+      "p_min": [0, 0],
+      "p_max": [1, 1],
+      "color": [0.8, 0.8, 0.2],
+      "transform": [
+        {"scale": [400, 280]},
+        {"translate": [492, 240]}
+      ]
+    },
+    {
+      "type": "rectangle",
+      "p_min": [0, 0],
+      "p_max": [1, 1],
+      "color": [0.8, 0.8, 0.2],
+      "transform": [
+        {"scale": [104, 280]},
+        {"translate": [492, 240]},
+        {"translate": [-512, -512]},
+        {"rotate": 45},
+        {"translate": [512, 512]}
+      ]
+    },
+    {
+      "type": "rectangle",
+      "p_min": [0, 0],
+      "p_max": [1, 1],
+      "color": [0.8, 0.8, 0.2],
+      "transform": [
+        {"scale": [104, 280]},
+        {"translate": [492, 240]},
+        {"translate": [-512, -512]},
+        {"rotate": 90},
+        {"translate": [512, 512]}
+      ]
+    },
+    {
+      "type": "rectangle",
+      "p_min": [0, 0],
+      "p_max": [1, 1],
+      "color": [0.8, 0.8, 0.2],
+      "transform": [
+        {"scale": [104, 280]},
+        {"translate": [492, 240]},
+        {"translate": [-512, -512]},
+        {"rotate": 135},
+        {"translate": [512, 512]}
+      ]
+    },
+    {
+      "type": "rectangle",
+      "p_min": [0, 0],
+      "p_max": [1, 1],
+      "color": [0.8, 0.8, 0.2],
+      "transform": [
+        {"scale": [104, 280]},
+        {"translate": [492, 240]},
+        {"translate": [-512, -512]},
+        {"rotate": 180},
+        {"translate": [512, 512]}
+      ]
+    }
+  ]
+}
