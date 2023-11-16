@@ -1,6 +1,7 @@
 # CSE 167 HW3
 
 ## Optimization I done:
+1. for 3_3, When press R, reset the camera to the initial position
 
 
 ## Normal Part
@@ -16,9 +17,9 @@ This is variable is used to control the speed of camera movement.
 1. For hw_3_2, change it to 2f
 2. For hw_3_3:
    1. For bunny, change it to 0.5f
-   2. For buddha, change it to 10.0f
+   2. For buddha, change it to 200.0f
    3. For cube, change it to 2.5f
-   3. For teapot, change it to 8.0f
+   3. For teapot, change it to 100.0f
    4. For two_shapes, change it to 2.5f
    5. for spheres, change it to 2.5f
 

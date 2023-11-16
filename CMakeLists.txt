@@ -42,7 +42,8 @@ set(SRCS src/3rdparty/glad.h
          src/hw2_scenes.cpp
          src/hw3.cpp
          src/hw3_scenes.cpp
-         src/image.cpp)
+         src/image.cpp
+        src/Camera.cpp)
 
 add_library(balboa_lib STATIC ${SRCS})
 add_executable(balboa src/main.cpp)

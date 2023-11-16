@@ -5,9 +5,10 @@
 #include "3rdparty/glm/glm/gtc/matrix_transform.hpp"
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
 #include "hw3_scenes.h"
+#include "Camera.h"
 
 using namespace hw3;
-const float cameraSpeedFactor = 2.0f;
+const float cameraSpeedFactor = 100.0f;
 
 /**
  * @brief Process input from the keyboard (Basic)
@@ -26,7 +27,9 @@ void processInput(GLFWwindow *window) {
  * @param cameraUp The up vector of the camera
  * @param deltaTime The time between the current frame and the last frame
  */
-void processInput(GLFWwindow *window, glm::vec3 &cameraPos, glm::vec3 &cameraFront, glm::vec3 &cameraUp, float deltaTime) {
+void processInput(GLFWwindow *window, glm::vec3 &cameraPos, glm::vec3 &cameraFront, glm::vec3 &cameraUp,
+                  const glm::vec3 &initialCameraPos, const glm::vec3 &initialCameraFront, const glm::vec3 &initialCameraUp,
+                  float deltaTime)  {
     float cameraSpeed = cameraSpeedFactor * deltaTime; // adjust the speed
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
@@ -38,7 +41,24 @@ void processInput(GLFWwindow *window, glm::vec3 &cameraPos, glm::vec3 &cameraFro
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        cameraPos = initialCameraPos;
+        cameraFront = initialCameraFront;
+        cameraUp = initialCameraUp;
+    }
+    // get mouse click and scroll
+    // left A, right D, up W, down S
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    }
+    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    }
 }
+
+
+
+
 
 /**
  * @brief Callback function for when the window is resized
@@ -382,9 +402,14 @@ void hw_3_3(const std::vector<std::string> &params) {
     float deltaTime = 0.0f;                               // Time between current frame and last frame
     float lastFrame = 0.0f;                               // Time of last frame
 
+    glm::vec3 initialCameraPos = cameraPos;
+    glm::vec3 initialCameraFront = cameraFront;
+    glm::vec3 initialCameraUp = cameraUp;
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "HW_3_3", NULL, NULL);
     if (window == NULL) {
         std::cerr << "Failed to create GLFW window" << std::endl;
@@ -393,6 +418,7 @@ void hw_3_3(const std::vector<std::string> &params) {
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
 
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -433,6 +459,8 @@ void hw_3_3(const std::vector<std::string> &params) {
     glEnable(GL_FRAMEBUFFER_SRGB);
 
 
+
+
     // Render loop
     while (!glfwWindowShouldClose(window)) {
         // Measure time difference between frames
@@ -440,7 +468,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        processInput(window, cameraPos, cameraFront, cameraUp, deltaTime);
+        processInput(window, cameraPos, cameraFront, cameraUp, initialCameraPos, initialCameraFront, initialCameraUp, deltaTime);
 
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -501,6 +529,172 @@ void hw_3_4(const std::vector<std::string> &params) {
 
     Scene scene = parse_scene(params[0]);
     std::cout << scene << std::endl;
+
+    unsigned int SCR_WIDTH = scene.camera.resolution.x;
+    unsigned int SCR_HEIGHT = scene.camera.resolution.y;
+    float background[3] = {scene.background.x, scene.background.y, scene.background.z};
+
+    const char *vertexShaderSource = "#version 330 core\n"
+                                     "layout (location = 0) in vec3 aPos;\n"
+                                     "layout (location = 1) in vec3 Colors;\n"
+                                     "layout (location = 2) in vec3 aNormal;\n"
+                                     "uniform mat4 model_matrix;\n"
+                                     "uniform mat4 view_matrix;\n"
+                                     "uniform mat4 projection_matrix;\n"
+                                     "out vec3 ColorsVector;\n"
+                                     "out vec3 NormalVector;\n"
+                                     "out vec3 FragPos;\n"
+                                     "void main()\n"
+                                     "{\n"
+                                     "   gl_Position = projection_matrix * view_matrix * model_matrix  * vec4(aPos, 1.0);\n"
+                                     "   ColorsVector = Colors;\n"
+                                     "   NormalVector = mat3(transpose(inverse(model_matrix))) * aNormal;\n"
+                                     "   FragPos = vec3(model_matrix * vec4(aPos, 1.0));\n"
+                                     "}\0";
+
+    const char *fragmentShaderSource = "#version 330 core\n"
+                                       "out vec4 FragColor;\n"
+                                       "in vec3 ColorsVector;\n"
+                                       "in vec3 NormalVector;\n"
+                                       "in vec3 FragPos;\n"
+                                       "uniform vec3 lightPos;\n"
+                                       "uniform vec3 lightColor;\n"
+                                       "uniform vec3 objectColor;\n"
+                                       "void main()\n"
+                                       "{\n"
+                                       "   float ambientStrength = 0.1;\n"
+                                       "   vec3 ambient = ambientStrength * lightColor;\n"
+                                       "   vec3 norm = normalize(NormalVector);\n"
+                                       "   vec3 lightDir = normalize(lightPos - FragPos);\n"
+                                       "   float diff = max(dot(norm, lightDir), 0.0);\n"
+                                       "   vec3 diffuse = diff * lightColor;\n"
+                                       "   vec3 result = (ambient + diffuse) * objectColor;\n"
+                                       "   FragColor = vec4(result, 1.0f);\n"
+                                       "}\n\0";
+
+    glm::mat4 camToWorld = convertToGLMmat4(scene.camera.cam_to_world);
+
+    glm::vec3 cameraPos = glm::vec3(camToWorld[3]);      // Camera position is in the 4th column
+    glm::vec3 cameraFront = -glm::vec3(camToWorld[2]);   // Forward vector is negative Z (third column)
+    glm::vec3 cameraUp = glm::vec3(camToWorld[1]);       // Up vector is the Y axis (second column)
+
+    float deltaTime = 0.0f;                               // Time between current frame and last frame
+    float lastFrame = 0.0f;                               // Time of last frame
+
+    glm::vec3 initialCameraPos = cameraPos;
+    glm::vec3 initialCameraFront = cameraFront;
+    glm::vec3 initialCameraUp = cameraUp;
+
+    glfwInit();
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "HW_3_4", NULL, NULL);
+    if (window == NULL) {
+        std::cerr << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return;
+    }
+
+    glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+        std::cerr << "Failed to initialize GLAD" << std::endl;
+        return;
+    }
+
+    GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
+
+    std::vector<GLuint> VAOs;
+    for (auto &mesh : scene.meshes) {
+        unsigned int VAO, VBO_vertex, VBO_color, VBO_normal, EBO;
+        glGenVertexArrays(1, &VAO);
+        glBindVertexArray(VAO);
+
+        glGenBuffers(1, &VBO_vertex);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO_vertex);
+        glBufferData(GL_ARRAY_BUFFER, mesh.vertices.size() * sizeof(Vector3f), mesh.vertices.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glGenBuffers(1, &VBO_color);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO_color);
+        glBufferData(GL_ARRAY_BUFFER, mesh.vertex_colors.size() * sizeof(Vector3f), mesh.vertex_colors.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(1);
+
+        glGenBuffers(1, &VBO_normal);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO_normal);
+        glBufferData(GL_ARRAY_BUFFER, mesh.vertex_normals.size() * sizeof(Vector3f), mesh.vertex_normals.data(), GL_STATIC_DRAW);
+        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(2);
+
+        glGenBuffers(1, &EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.faces.size() * sizeof(Vector3i), mesh.faces.data(), GL_STATIC_DRAW);
+
+        glBindVertexArray(0);
+
+        VAOs.push_back(VAO);
+    }
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_FRAMEBUFFER_SRGB);
+
+
+    // Render loop
+    while (!glfwWindowShouldClose(window)) {
+        // Measure time difference between frames
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        processInput(window, cameraPos, cameraFront, cameraUp, initialCameraPos, initialCameraFront, initialCameraUp, deltaTime);
+
+        glClearColor(background[0], background[1], background[2], 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Activate shader program
+        glUseProgram(shaderProgram);
+
+        float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
+        float scale = scene.camera.s; // This is the scaling/film size parameter
+        float zNear = scene.camera.z_near;
+        float zFar = scene.camera.z_far;
+        glm::mat4 projection_matrix = glm::mat4(
+                1.0f / (aspectRatio * scale), 0.0f, 0.0f, 0.0f,
+                0.0f, 1.0f / scale, 0.0f, 0.0f,
+                0.0f, 0.0f, -zFar / (zFar - zNear), -1.0f,
+                0.0f, 0.0f, -(zFar * zNear) / (zFar - zNear), 0.0f
+        );
+
+        unsigned int projection_matrixLoc = glGetUniformLocation(shaderProgram, "projection_matrix");
+        glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+
+        // Calculate view matrix once
+        glm::mat4 view_matrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
+        glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
+
+        // Render each mesh
+        for (int i = 0; i < scene.meshes.size(); i++) {
+            glm::mat4 model_matrix = convertToGLMmat4(scene.meshes[i].model_matrix);
+            unsigned int model_matrixLoc = glGetUniformLocation(shaderProgram, "model_matrix");
+            glUniformMatrix4fv(model_matrixLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+            glBindVertexArray(VAOs[i]);
+            glDrawElements(GL_TRIANGLES, scene.meshes[i].faces.size() * 3, GL_UNSIGNED_INT, 0);
+        }
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+    }
+
+    for (int i = 0; i < VAOs.size(); i++) {
+        glDeleteVertexArrays(1, &VAOs[i]);
+    }
+    glDeleteProgram(shaderProgram);
+    glfwTerminate();
 }
 
 /**
@@ -510,3 +704,5 @@ void hw_3_4(const std::vector<std::string> &params) {
 void hw_3_5(const std::vector<std::string> &params) {
     hw_3_3(params);
 }
+
+
