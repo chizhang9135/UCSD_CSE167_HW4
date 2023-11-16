@@ -40,10 +40,21 @@ void processInput(GLFWwindow *window, glm::vec3 &cameraPos, glm::vec3 &cameraFro
         glfwSetWindowShouldClose(window, true);
 }
 
+/**
+ * @brief Callback function for when the window is resized
+ * @param window The GLFW window
+ * @param width The new width
+ * @param height The new height
+ */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
+/**
+ * @brief Check for shader compile errors
+ * @param shader The shader to check
+ * @param type The type of shader
+ */
 void checkCompileErrors(GLuint shader, std::string type) {
     GLint success;
     GLchar infoLog[1024];
@@ -62,6 +73,12 @@ void checkCompileErrors(GLuint shader, std::string type) {
     }
 }
 
+/**
+ * @brief Compile a shader
+ * @param type The type of shader
+ * @param shaderSource The shader source code
+ * @return The shader
+ */
 GLuint compileShader(GLenum type, const char* shaderSource) {
     // Create a shader object
     GLuint shader = glCreateShader(type);
@@ -84,6 +101,12 @@ GLuint compileShader(GLenum type, const char* shaderSource) {
     return shader;
 }
 
+/**
+ * @brief Create a shader program
+ * @param vertexShaderSource The vertex shader source code
+ * @param fragmentShaderSource The fragment shader source code
+ * @return The shader program
+ */
 GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
     // Compile vertex and fragment shaders
     GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
@@ -116,7 +139,7 @@ GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentS
 }
 
 /**
- * @brief Create a transformation matrix
+ * @brief Create a transformation matrix (for rotating a triangle)
  * @param screenWidth The width of the window
  * @param screenHeight The height of the window
  * @return The transformation matrix
