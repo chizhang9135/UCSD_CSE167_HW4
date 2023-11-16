@@ -7,23 +7,35 @@
 #include "hw3_scenes.h"
 
 using namespace hw3;
+const float cameraSpeedFactor = 2.0f;
 
-void printMatrix(const glm::mat4 m) {
-    //print prompt in blue
-    std::cout << "\033[1;34m";
-    std::cout << "Matrix: " << std::endl;
-    //print in color of yellow
-    std::cout << "\033[1;33m";
-    for (int i = 0; i < 4; i++) {
-        std::cout << "[";
-        for (int j = 0; j < 4; j++) {
-            std::cout << m[i][j] << " ";
-        }
-        std::cout << "]" << std::endl;
-    }
-    std::cout << "\033[0m";
-}
+/**
+ * @brief Process input from the keyboard (Basic)
+ * @param window The GLFW window
+ */
 void processInput(GLFWwindow *window) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+}
+
+/**
+ * @brief Process input from the keyboard (Advanced)
+ * @param window The GLFW window
+ * @param cameraPos The position of the camera
+ * @param cameraFront The front vector of the camera
+ * @param cameraUp The up vector of the camera
+ * @param deltaTime The time between the current frame and the last frame
+ */
+void processInput(GLFWwindow *window, glm::vec3 &cameraPos, glm::vec3 &cameraFront, glm::vec3 &cameraUp, float deltaTime) {
+    float cameraSpeed = cameraSpeedFactor * deltaTime; // adjust the speed
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cameraPos += cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cameraPos -= cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 }
@@ -32,7 +44,6 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-// Function to check shader compilation/linking errors.
 void checkCompileErrors(GLuint shader, std::string type) {
     GLint success;
     GLchar infoLog[1024];
@@ -51,40 +62,53 @@ void checkCompileErrors(GLuint shader, std::string type) {
     }
 }
 
-/**
- * @brief Compile a shader
- * @param shader The shader to compile
- */
-void compileShader(GLuint shader) {
+GLuint compileShader(GLenum type, const char* shaderSource) {
+    // Create a shader object
+    GLuint shader = glCreateShader(type);
+
+    // Set the source code in the shader
+    glShaderSource(shader, 1, &shaderSource, NULL);
+
+    // Compile the shader
     glCompileShader(shader);
-    checkCompileErrors(shader, shader == GL_VERTEX_SHADER ? "VERTEX" : "FRAGMENT");
+
+    // Check for shader compile errors
+    int success;
+    char infoLog[512];
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
+    return shader;
 }
 
-/**
- * @brief Build and compile a shader program
- * @param vertexShaderSource The vertex shader source code
- * @param fragmentShaderSource The fragment shader source code
- * @return The shader program
- */
-GLuint buildAndCompileShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
-    // Vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-    compileShader(vertexShader);
+GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
+    // Compile vertex and fragment shaders
+    GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
+    GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
 
-    // Fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-    compileShader(fragmentShader);
-
-    // Link shaders
+    // Create a shader program
     GLuint shaderProgram = glCreateProgram();
+
+    // Attach compiled shaders to the program
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    checkCompileErrors(shaderProgram, "PROGRAM");
 
-    // Delete shaders as they're linked into our program now and no longer necessary
+    // Link the shader program
+    glLinkProgram(shaderProgram);
+
+    // Check for linking errors
+    int success;
+    char infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+
+    // Delete the shaders as they're linked into our program now and no longer necessary
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
@@ -104,6 +128,23 @@ glm::mat4 createTransformationMatrix(int screenWidth, int screenHeight, float sp
     transform = glm::rotate(transform, (float)glfwGetTime() * speed, glm::vec3(0.0, 0.0, 1.0));
     transform = projection * transform;
     return transform;
+}
+
+/**
+ * @brief Convert a Matrix4x4f to a glm::mat4
+ * @param m The Matrix4x4f to convert
+ * @return The glm::mat4
+ */
+glm::mat4 convertToGLMmat4(const Matrix4x4f& m) {
+    glm::mat4 glmMatrix;
+    // glm::mat4 is column-major, but Matrix4x4f is row-major
+    // Therefore, we need to transpose the matrix during assignment
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 4; col++) {
+            glmMatrix[col][row] = m(row, col);
+        }
+    }
+    return glmMatrix;
 }
 
 /**
@@ -210,7 +251,7 @@ void hw_3_2(const std::vector<std::string> &params) {
     }
 
     // Build and compile our shader program
-    GLuint shaderProgram = buildAndCompileShaderProgram(vertexShaderSource, fragmentShaderSource);
+    GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
 
     float vertices[] = {
@@ -237,6 +278,7 @@ void hw_3_2(const std::vector<std::string> &params) {
 
     // Render loop
     while (!glfwWindowShouldClose(window)) {
+
         processInput(window);
 
         // Rendering commands
@@ -247,7 +289,7 @@ void hw_3_2(const std::vector<std::string> &params) {
         glUseProgram(shaderProgram);
 
         // Create transformations
-        glm::mat4 transform = createTransformationMatrix(SCR_WIDTH, SCR_HEIGHT,1.5);
+        glm::mat4 transform = createTransformationMatrix(SCR_WIDTH, SCR_HEIGHT,cameraSpeedFactor);
 
         // Get the transformation uniform location and set the transformation matrix
         unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
@@ -273,23 +315,8 @@ void hw_3_2(const std::vector<std::string> &params) {
 }
 
 /**
- * @brief Convert a Matrix4x4f to a glm::mat4
- * @param m The Matrix4x4f to convert
- * @return The glm::mat4
- */
-glm::mat4 convertToGLMmat4(const Matrix4x4f m) {
-    glm::mat4 glmMatrix;
-    for (int i = 0; i < 4; ++i) {
-        for (int j = 0; j < 4; ++j) {
-            glmMatrix[j][i] = m(i, j); // Note: glm::mat4 is also column-major
-        }
-    }
-    return glmMatrix;
-}
-
-/**
  * @brief HW 3.3: Render a scene
- * @param params
+ * @param params json file
  */
 void hw_3_3(const std::vector<std::string> &params) {
     // HW 3.3: Render a scene
@@ -324,108 +351,96 @@ void hw_3_3(const std::vector<std::string> &params) {
                                        "   FragColor = vec4(ColorsVector, 1.0f);\n"
                                        "}\n\0";
 
-    // Initialize GLFW
+    glm::mat4 camToWorld = convertToGLMmat4(scene.camera.cam_to_world);
+    glm::vec3 cameraPos = glm::vec3(camToWorld[3]);      // Camera position is in the 4th column
+    glm::vec3 cameraFront = -glm::vec3(camToWorld[2]);   // Forward vector is negative Z (third column)
+    glm::vec3 cameraUp = glm::vec3(camToWorld[1]);       // Up vector is the Y axis (second column)
+
+    float deltaTime = 0.0f;                               // Time between current frame and last frame
+    float lastFrame = 0.0f;                               // Time of last frame
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-
-    // GLFW window creation
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "HW_3_3", NULL, NULL);
-
     if (window == NULL) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return;
     }
-
     glfwMakeContextCurrent(window);
+    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    // Load all OpenGL function pointers
+
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return;
     }
 
+    GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
-
-    // Build and compile our shader program
-
-    GLuint shaderProgram = buildAndCompileShaderProgram(vertexShaderSource, fragmentShaderSource);
-
-    // VAOS and VBOS Vectors
     std::vector<GLuint> VAOs;
-    std::vector<GLuint> VBOs_Vertex;
-    std::vector<GLuint> VBOs_Color;
-
-    // loop over mesh and create VAOs and VBOs
     for (auto &mesh : scene.meshes) {
-        // Create VAO
-        GLuint VAO;
+        unsigned int VAO, VBO_vertex, VBO_color, EBO;
         glGenVertexArrays(1, &VAO);
         glBindVertexArray(VAO);
-        VAOs.push_back(VAO);
 
-        // Create VBO for vertices
-        GLuint VBO_Vertex;
-        glGenBuffers(1, &VBO_Vertex);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_Vertex);
+        glGenBuffers(1, &VBO_vertex);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO_vertex);
         glBufferData(GL_ARRAY_BUFFER, mesh.vertices.size() * sizeof(Vector3f), mesh.vertices.data(), GL_STATIC_DRAW);
-        VBOs_Vertex.push_back(VBO_Vertex);
-
-        // Create VBO for colors
-        GLuint VBO_Color;
-        glGenBuffers(1, &VBO_Color);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_Color);
-        glBufferData(GL_ARRAY_BUFFER, mesh.vertex_colors.size() * sizeof(Vector3f), mesh.vertex_colors.data(), GL_STATIC_DRAW);
-        VBOs_Color.push_back(VBO_Color);
-
-        // Set vertex attribute pointers
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_Vertex);
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
 
-        glBindBuffer(GL_ARRAY_BUFFER, VBO_Color);
+        glGenBuffers(1, &VBO_color);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO_color);
+        glBufferData(GL_ARRAY_BUFFER, mesh.vertex_colors.size() * sizeof(Vector3f), mesh.vertex_colors.data(), GL_STATIC_DRAW);
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(1);
 
-        // Unbind VAO
-        glBindVertexArray(0);
-    }
+        glGenBuffers(1, &EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.faces.size() * sizeof(Vector3i), mesh.faces.data(), GL_STATIC_DRAW);
 
+        glBindVertexArray(0);
+
+        VAOs.push_back(VAO);
+    }
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_FRAMEBUFFER_SRGB);
+
+
     // Render loop
     while (!glfwWindowShouldClose(window)) {
-        processInput(window);
-        //enable depth test
+        // Measure time difference between frames
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
 
-        // Rendering commands
+        processInput(window, cameraPos, cameraFront, cameraUp, deltaTime);
+
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
         // Activate shader program
         glUseProgram(shaderProgram);
 
-        float aspectRatio = SCR_WIDTH/SCR_HEIGHT; // Aspect ratio of the viewport (width / height)
-        float scale = scene.camera.s; // Scale factor, often computed as 1 / tan(fov / 2)
-        float zNear = scene.camera.z_near; // Distance to the near clipping plane
-        float zFar = scene.camera.z_far; // Distance to the far clipping plane
-        glm::mat4 projection_matrix;
-        // initialize projection matrix with zeros
-        projection_matrix = glm::mat4(0.0f);
-        projection_matrix[0][0] = 1.0f / (aspectRatio * scale);
-        projection_matrix[1][1] = 1.0f / scale;
-        projection_matrix[2][2] = -zFar / (zFar - zNear);
-        projection_matrix[2][3] = -(zFar * zNear) / (zFar - zNear);
-        projection_matrix[3][2] = -1.0f;
+        float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
+        float scale = scene.camera.s; // This is the scaling/film size parameter
+        float zNear = scene.camera.z_near;
+        float zFar = scene.camera.z_far;
+        glm::mat4 projection_matrix = glm::mat4(
+                1.0f / (aspectRatio * scale), 0.0f,                        0.0f,                            0.0f,
+                0.0f,                          1.0f / scale,                0.0f,                            0.0f,
+                0.0f,                          0.0f,                       -zFar / (zFar - zNear),          -1.0f,
+                0.0f,                          0.0f,                       -(zFar * zNear) / (zFar - zNear), 0.0f
+        );
 
-        printMatrix(projection_matrix);
         unsigned int projection_matrixLoc = glGetUniformLocation(shaderProgram, "projection_matrix");
         glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // Calculate view matrix once
-        glm::mat4 view_matrix = convertToGLMmat4(inverse(scene.camera.cam_to_world));
+        glm::mat4 view_matrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
 
@@ -434,32 +449,27 @@ void hw_3_3(const std::vector<std::string> &params) {
             glm::mat4 model_matrix = convertToGLMmat4(scene.meshes[i].model_matrix);
             unsigned int model_matrixLoc = glGetUniformLocation(shaderProgram, "model_matrix");
             glUniformMatrix4fv(model_matrixLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
-
             glBindVertexArray(VAOs[i]);
-            glDrawArrays(GL_TRIANGLES, 0, scene.meshes[i].vertices.size());
+//            glDrawArrays(GL_TRIANGLES, 0, scene.meshes[i].vertices.size());
+            glDrawElements(GL_TRIANGLES, scene.meshes[i].faces.size() * 3, GL_UNSIGNED_INT, 0);
+
         }
-
-
-        // Swap buffers and poll IO events
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
 
-
-    // De-allocate all resources
     for (int i = 0; i < VAOs.size(); i++) {
         glDeleteVertexArrays(1, &VAOs[i]);
-        glDeleteBuffers(1, &VBOs_Vertex[i]);
-        glDeleteBuffers(1, &VBOs_Color[i]);
     }
-
     glDeleteProgram(shaderProgram);
-
-    // GLFW: terminate, clearing all previously allocated GLFW resources.
     glfwTerminate();
 
 }
 
+/**
+ * @brief HW 3.4: Render a scene with lighting
+ * @param params json file
+ */
 void hw_3_4(const std::vector<std::string> &params) {
     // HW 3.4: Render a scene with lighting
     if (params.size() == 0) {
@@ -468,4 +478,12 @@ void hw_3_4(const std::vector<std::string> &params) {
 
     Scene scene = parse_scene(params[0]);
     std::cout << scene << std::endl;
+}
+
+/**
+ * @brief HW 3.5: Wrapper function for HW 3.3
+ * @param params json file
+ */
+void hw_3_5(const std::vector<std::string> &params) {
+    hw_3_3(params);
 }

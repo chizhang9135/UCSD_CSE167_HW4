@@ -121,6 +121,10 @@ int main(int argc, char *argv[]) {
         hw_3_3(parameters);
     } else if (hw_num == "3_4") {
         hw_3_4(parameters);
+    } else if (hw_num == "3_5") {
+        hw_3_5(parameters);
+    } else {
+        std::cout << "Invalid hw number." << std::endl;
     }
 
     return 0;
