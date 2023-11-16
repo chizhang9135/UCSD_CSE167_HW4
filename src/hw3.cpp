@@ -5,7 +5,7 @@
 #include "3rdparty/glm/glm/gtc/matrix_transform.hpp"
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
 #include "hw3_scenes.h"
-#include "Camera.h"
+
 
 using namespace hw3;
 const float cameraSpeedFactor = 100.0f;
