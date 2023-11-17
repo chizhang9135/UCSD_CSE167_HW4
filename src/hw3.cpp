@@ -5,11 +5,100 @@
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
 #include "hw3_scenes.h"
 #include "MyCamera.h"
-#include "OpenGLHelper.h"
+
 
 
 using namespace hw3;
-using namespace OpenGLHelper; // This is for the helper functions
+
+MyCamera *camera = nullptr;
+
+void processInput(GLFWwindow* window) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, true);
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+}
+
+GLuint CompileShader(GLenum type, const char* shaderSource) {
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &shaderSource, NULL);
+    glCompileShader(shader);
+
+    int success;
+    char infoLog[512];
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        glGetShaderInfoLog(shader, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
+    }
+
+    return shader;
+}
+
+GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
+    GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
+    GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    int success;
+    char infoLog[512];
+    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+    if (!success) {
+        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
+    }
+
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return shaderProgram;
+}
+
+glm::mat4 createTransformationMatrix(int screenWidth, int screenHeight, float speed) {
+    glm::mat4 transform = glm::mat4(1.0f);
+    float aspectRatio = (float)screenWidth / (float)screenHeight;
+    glm::mat4 projection = glm::ortho(-aspectRatio, aspectRatio, -1.0f, 1.0f, -1.0f, 1.0f);
+    transform = glm::rotate(transform, (float)glfwGetTime() * speed, glm::vec3(0.0, 0.0, 1.0));
+    transform = projection * transform;
+    return transform;
+}
+
+glm::mat4 convertToGLMmat4(const Matrix4x4f& m) {
+    glm::mat4 glmMatrix;
+    for (int row = 0; row < 4; row++) {
+        for (int col = 0; col < 4; col++) {
+            glmMatrix[col][row] = m(row, col);
+        }
+    }
+    return glmMatrix;
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (camera) {
+        if (camera->firstMouse) {
+            camera->lastX = xpos;
+            camera->lastY = ypos;
+            camera->firstMouse = false;
+        }
+
+        float xoffset = xpos - camera->lastX;
+        float yoffset = camera->lastY - ypos; // Reversed since y-coordinates go from bottom to top
+        camera->lastX = xpos;
+        camera->lastY = ypos;
+
+        camera->ProcessMouseMovement(xoffset, yoffset);
+    }
+}
+
+
+
+
 
 /**
  * @brief HW 3.1: Render a OpenGL window
@@ -183,6 +272,7 @@ void hw_3_2(const std::vector<std::string> &params) {
  * @param params json file
  */
 void hw_3_3(const std::vector<std::string> &params) {
+
     // HW 3.3: Render a scene
     if (params.size() == 0) {
         return;
@@ -227,7 +317,7 @@ void hw_3_3(const std::vector<std::string> &params) {
     glm::vec3 initialCameraFront = cameraFront;
     glm::vec3 initialCameraUp = cameraUp;
 
-    MyCamera camera(cameraPos, cameraUp, cameraFront);
+    camera = new MyCamera(SCR_WIDTH, SCR_HEIGHT, cameraPos, cameraUp, cameraFront);
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -241,6 +331,8 @@ void hw_3_3(const std::vector<std::string> &params) {
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
 
 
 
@@ -291,7 +383,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        camera.ProcessKeyboard(window, deltaTime);
+        camera->ProcessKeyboard(window, deltaTime);
 
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -314,7 +406,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // Calculate view matrix once
-        glm::mat4 view_matrix = camera.GetViewMatrix();  // Get the view matrix from MyCamera
+        glm::mat4 view_matrix = camera->GetViewMatrix();  // Get the view matrix from MyCamera
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
 
@@ -408,7 +500,8 @@ void hw_3_4(const std::vector<std::string> &params) {
     glm::vec3 initialCameraFront = cameraFront;
     glm::vec3 initialCameraUp = cameraUp;
 
-    MyCamera camera(cameraPos, cameraUp, cameraFront);
+
+    camera = new MyCamera(SCR_WIDTH, SCR_HEIGHT, cameraPos, cameraUp, cameraFront);
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -422,6 +515,8 @@ void hw_3_4(const std::vector<std::string> &params) {
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
 
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -475,7 +570,8 @@ void hw_3_4(const std::vector<std::string> &params) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        camera.ProcessKeyboard(window, deltaTime);
+        camera->ProcessKeyboard(window, deltaTime);
+
 
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -498,7 +594,7 @@ void hw_3_4(const std::vector<std::string> &params) {
         glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // Calculate view matrix once
-        glm::mat4 view_matrix = camera.GetViewMatrix();  // Get the view matrix from MyCamera
+        glm::mat4 view_matrix = camera->GetViewMatrix();  // Get the view matrix from MyCamera
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
 

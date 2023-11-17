@@ -45,8 +45,6 @@ set(SRCS src/3rdparty/glad.h
          src/image.cpp
         src/MyCamera.cpp
         src/MyCamera.h
-        src/OpenGLHelper.cpp
-        src/OpenGLHelper.h
 )
 
 add_library(balboa_lib STATIC ${SRCS})

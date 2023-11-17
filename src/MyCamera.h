@@ -1,13 +1,13 @@
 #ifndef MYCAMERA_H
 #define MYCAMERA_H
 
-#include "hw3.h"
+
 #include "3rdparty/glad.h" // needs to be included before GLFW!
 #include "3rdparty/glfw/include/GLFW/glfw3.h"
 #include "3rdparty/glm/glm/glm.hpp"
 #include "3rdparty/glm/glm/gtc/matrix_transform.hpp"
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
-#include "hw3_scenes.h"
+
 
 class MyCamera {
 public:
@@ -17,10 +17,11 @@ public:
     glm::vec3 Right;
     glm::vec3 WorldUp;
 
-    float cameraSpeedFactor = 100.0f;
+    const float cameraSpeedFactor = 150.0f;
+    const float sensitivity = 0.1f;  // Adjust sensitivity as needed
 
     // Constructor with vectors
-    MyCamera(glm::vec3 position, glm::vec3 up, glm::vec3 front);
+    MyCamera(float screenWidth, float screenHeight, glm::vec3 position, glm::vec3 up, glm::vec3 front);
 
     // Resets the camera to its initial state
     void Reset();
@@ -28,14 +29,23 @@ public:
     // Processes input received from any keyboard-like input system
     void ProcessKeyboard(GLFWwindow *window, float deltaTime);
 
+    void ProcessMouseMovement(float xoffset, float yoffset);
+
     // Returns the view matrix calculated using Euler Angles and the LookAt Matrix
     glm::mat4 GetViewMatrix();
 
-private:
-    // Initial settings
     glm::vec3 InitialPosition;
     glm::vec3 InitialFront;
     glm::vec3 InitialUp;
+
+    float screenWidth;
+    float screenHeight;
+
+    float lastX;
+    float lastY;
+    bool firstMouse;
+    float yaw;
+    float pitch;
 
     void updateCameraVectors();
 };
