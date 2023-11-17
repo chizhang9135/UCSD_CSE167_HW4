@@ -10,17 +10,38 @@
 
 using namespace hw3;
 
+
+//<editor-fold desc="Global variables and helper functions">
+/**
+ * @brief Global variable for camera, create new camera if needed, remember to delete it
+ */
 MyCamera *camera = nullptr;
 
+/**
+ * @brief Process input from keyboard
+ * @param window GLFW window
+ */
 void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 }
 
+/**
+ * @brief Callback function for window resizing
+ * @param window GLFW window
+ * @param width New width
+ * @param height New height
+ */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
+/**
+ * @brief Compile shader
+ * @param type Shader type
+ * @param shaderSource Shader source code
+ * @return Shader ID
+ */
 GLuint CompileShader(GLenum type, const char* shaderSource) {
     GLuint shader = glCreateShader(type);
     glShaderSource(shader, 1, &shaderSource, NULL);
@@ -37,6 +58,12 @@ GLuint CompileShader(GLenum type, const char* shaderSource) {
     return shader;
 }
 
+/**
+ * @brief Create shader program
+ * @param vertexShaderSource Vertex shader source code
+ * @param fragmentShaderSource Fragment shader source code
+ * @return Shader program ID
+ */
 GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
     GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
     GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
@@ -60,6 +87,13 @@ GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentS
     return shaderProgram;
 }
 
+/**
+ * @brief Create transformation matrix
+ * @param screenWidth Screen width
+ * @param screenHeight Screen height
+ * @param speed Rotation speed
+ * @return Transformation matrix
+ */
 glm::mat4 createTransformationMatrix(int screenWidth, int screenHeight, float speed) {
     glm::mat4 transform = glm::mat4(1.0f);
     float aspectRatio = (float)screenWidth / (float)screenHeight;
@@ -69,6 +103,11 @@ glm::mat4 createTransformationMatrix(int screenWidth, int screenHeight, float sp
     return transform;
 }
 
+/**
+ * @brief Convert Matrix4x4f to glm::mat4
+ * @param m Matrix4x4f
+ * @return glm::mat4
+ */
 glm::mat4 convertToGLMmat4(const Matrix4x4f& m) {
     glm::mat4 glmMatrix;
     for (int row = 0; row < 4; row++) {
@@ -79,6 +118,12 @@ glm::mat4 convertToGLMmat4(const Matrix4x4f& m) {
     return glmMatrix;
 }
 
+/**
+ * @brief Callback function for mouse movement
+ * @param window GLFW window
+ * @param xpos Mouse x position
+ * @param ypos Mouse y position
+ */
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
     if (camera) {
         if (camera->firstMouse) {
@@ -95,11 +140,9 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
         camera->ProcessMouseMovement(xoffset, yoffset);
     }
 }
+//</editor-fold>
 
-
-
-
-
+//<editor-fold desc="HW 3.1 - 3.2: Window and rotating triangle">
 /**
  * @brief HW 3.1: Render a OpenGL window
  * @param params Unused
@@ -266,6 +309,7 @@ void hw_3_2(const std::vector<std::string> &params) {
     glfwTerminate();
     return;
 }
+//</editor-fold>
 
 /**
  * @brief HW 3.3: Render a scene
@@ -430,6 +474,9 @@ void hw_3_3(const std::vector<std::string> &params) {
     glDeleteProgram(shaderProgram);
     glfwTerminate();
 
+    //free camera
+    delete camera;
+
 }
 
 /**
@@ -472,20 +519,35 @@ void hw_3_4(const std::vector<std::string> &params) {
                                        "in vec3 ColorsVector;\n"
                                        "in vec3 NormalVector;\n"
                                        "in vec3 FragPos;\n"
+                                       "\n"
                                        "uniform vec3 lightPos;\n"
                                        "uniform vec3 lightColor;\n"
+                                       "uniform vec3 viewPos; // Camera/view position\n"
                                        "uniform vec3 objectColor;\n"
+                                       "\n"
                                        "void main()\n"
                                        "{\n"
-                                       "   float ambientStrength = 0.1;\n"
-                                       "   vec3 ambient = ambientStrength * lightColor;\n"
-                                       "   vec3 norm = normalize(NormalVector);\n"
-                                       "   vec3 lightDir = normalize(lightPos - FragPos);\n"
-                                       "   float diff = max(dot(norm, lightDir), 0.0);\n"
-                                       "   vec3 diffuse = diff * lightColor;\n"
-                                       "   vec3 result = (ambient + diffuse) * objectColor;\n"
-                                       "   FragColor = vec4(result, 1.0f);\n"
-                                       "}\n\0";
+                                       "    // Ambient lighting\n"
+                                       "    float ambientStrength = 0.1;\n"
+                                       "    vec3 ambient = ambientStrength * lightColor;\n"
+                                       "\n"
+                                       "    // Diffuse lighting\n"
+                                       "    vec3 norm = normalize(NormalVector);\n"
+                                       "    vec3 lightDir = normalize(lightPos - FragPos);\n"
+                                       "    float diff = max(dot(norm, lightDir), 0.0);\n"
+                                       "    vec3 diffuse = diff * lightColor;\n"
+                                       "\n"
+                                       "    // Specular lighting\n"
+                                       "    float specularStrength = 0.5;\n"
+                                       "    vec3 viewDir = normalize(viewPos - FragPos);\n"
+                                       "    vec3 reflectDir = reflect(-lightDir, norm);  \n"
+                                       "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32); // Shininess factor\n"
+                                       "    vec3 specular = specularStrength * spec * lightColor;  \n"
+                                       "\n"
+                                       "    // Combining the three components\n"
+                                       "    vec3 result = (ambient + diffuse + specular) * objectColor;\n"
+                                       "    FragColor = vec4(result, 1.0f);\n"
+                                       "}";
 
     glm::mat4 camToWorld = convertToGLMmat4(scene.camera.cam_to_world);
 
@@ -598,6 +660,8 @@ void hw_3_4(const std::vector<std::string> &params) {
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
 
+        unsigned int viewPosLoc = glGetUniformLocation(shaderProgram, "viewPos");
+        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
 
         // Render each mesh
         for (int i = 0; i < scene.meshes.size(); i++) {
@@ -617,6 +681,9 @@ void hw_3_4(const std::vector<std::string> &params) {
     }
     glDeleteProgram(shaderProgram);
     glfwTerminate();
+
+    //free camera
+    delete camera;
 }
 
 /**
