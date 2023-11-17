@@ -2,158 +2,14 @@
 #include "3rdparty/glad.h" // needs to be included before GLFW!
 #include "3rdparty/glfw/include/GLFW/glfw3.h"
 #include "3rdparty/glm/glm/glm.hpp"
-#include "3rdparty/glm/glm/gtc/matrix_transform.hpp"
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
 #include "hw3_scenes.h"
 #include "MyCamera.h"
+#include "OpenGLHelper.h"
 
 
 using namespace hw3;
-
-/**
- * @brief Process input from the keyboard (Basic)
- * @param window The GLFW window
- */
-void processInput(GLFWwindow *window) {
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
-
-
-
-
-
-
-
-/**
- * @brief Callback function for when the window is resized
- * @param window The GLFW window
- * @param width The new width
- * @param height The new height
- */
-void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
-}
-
-/**
- * @brief Check for shader compile errors
- * @param shader The shader to check
- * @param type The type of shader
- */
-void checkCompileErrors(GLuint shader, std::string type) {
-    GLint success;
-    GLchar infoLog[1024];
-    if (type != "PROGRAM") {
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            std::cerr << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
-    } else {
-        glGetProgramiv(shader, GL_LINK_STATUS, &success);
-        if (!success) {
-            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-            std::cerr << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
-    }
-}
-
-/**
- * @brief Compile a shader
- * @param type The type of shader
- * @param shaderSource The shader source code
- * @return The shader
- */
-GLuint compileShader(GLenum type, const char* shaderSource) {
-    // Create a shader object
-    GLuint shader = glCreateShader(type);
-
-    // Set the source code in the shader
-    glShaderSource(shader, 1, &shaderSource, NULL);
-
-    // Compile the shader
-    glCompileShader(shader);
-
-    // Check for shader compile errors
-    int success;
-    char infoLog[512];
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-        glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-    return shader;
-}
-
-/**
- * @brief Create a shader program
- * @param vertexShaderSource The vertex shader source code
- * @param fragmentShaderSource The fragment shader source code
- * @return The shader program
- */
-GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
-    // Compile vertex and fragment shaders
-    GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
-
-    // Create a shader program
-    GLuint shaderProgram = glCreateProgram();
-
-    // Attach compiled shaders to the program
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-
-    // Link the shader program
-    glLinkProgram(shaderProgram);
-
-    // Check for linking errors
-    int success;
-    char infoLog[512];
-    glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-    if (!success) {
-        glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
-    }
-
-    // Delete the shaders as they're linked into our program now and no longer necessary
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return shaderProgram;
-}
-
-/**
- * @brief Create a transformation matrix (for rotating a triangle)
- * @param screenWidth The width of the window
- * @param screenHeight The height of the window
- * @return The transformation matrix
- */
-glm::mat4 createTransformationMatrix(int screenWidth, int screenHeight, float speed) {
-    glm::mat4 transform = glm::mat4(1.0f);
-    float aspectRatio = (float)screenWidth / (float)screenHeight;
-    glm::mat4 projection = glm::ortho(-aspectRatio, aspectRatio, -1.0f, 1.0f, -1.0f, 1.0f);
-    transform = glm::rotate(transform, (float)glfwGetTime() * speed, glm::vec3(0.0, 0.0, 1.0));
-    transform = projection * transform;
-    return transform;
-}
-
-/**
- * @brief Convert a Matrix4x4f to a glm::mat4
- * @param m The Matrix4x4f to convert
- * @return The glm::mat4
- */
-glm::mat4 convertToGLMmat4(const Matrix4x4f& m) {
-    glm::mat4 glmMatrix;
-    // glm::mat4 is column-major, but Matrix4x4f is row-major
-    // Therefore, we need to transpose the matrix during assignment
-    for (int row = 0; row < 4; row++) {
-        for (int col = 0; col < 4; col++) {
-            glmMatrix[col][row] = m(row, col);
-        }
-    }
-    return glmMatrix;
-}
+using namespace OpenGLHelper; // This is for the helper functions
 
 /**
  * @brief HW 3.1: Render a OpenGL window
@@ -350,7 +206,7 @@ void hw_3_3(const std::vector<std::string> &params) {
                                      "   gl_Position = projection_matrix * view_matrix * model_matrix  * vec4(aPos, 1.0);\n"
                                      "   ColorsVector = Colors;\n"
                                      "}\0";
-
+//
     const char *fragmentShaderSource = "#version 330 core\n"
                                        "out vec4 FragColor;\n"
                                        "in vec3 ColorsVector;\n"

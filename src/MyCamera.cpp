@@ -17,7 +17,7 @@ void MyCamera::Reset() {
 }
 
 void MyCamera::ProcessKeyboard(GLFWwindow *window, float deltaTime) {
-    float velocity = 5.0f * deltaTime;
+    float velocity = cameraSpeedFactor * deltaTime;
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         Position += Front * velocity;

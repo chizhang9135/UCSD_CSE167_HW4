@@ -9,9 +9,9 @@
 2. pre-rendering image is in `output` folder
 3. run the scene I create with `./balboa -hw 3_5 file_name`
 
-### Notes: Need to change `cameraSpeedFactor` in hw3.cpp to get proper speed.
+### Notes: Need to change `cameraSpeedFactor` in `MyCamera.h` to get proper speed.
 ```c++
-cameraSpeedFactor = x.xf; // change x.xf to a proper value
+cameraSpeedFactor = a.bf; // change a, b to get proper value
 ```
 This is variable is used to control the speed of camera movement.
 1. For hw_3_2, change it to 2f
