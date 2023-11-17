@@ -134,12 +134,14 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 
         float xoffset = xpos - camera->lastX;
         float yoffset = camera->lastY - ypos; // Reversed since y-coordinates go from bottom to top
+
         camera->lastX = xpos;
         camera->lastY = ypos;
 
         camera->ProcessMouseMovement(xoffset, yoffset);
     }
 }
+
 //</editor-fold>
 
 //<editor-fold desc="HW 3.1 - 3.2: Window and rotating triangle">
