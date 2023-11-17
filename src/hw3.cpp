@@ -5,10 +5,10 @@
 #include "3rdparty/glm/glm/gtc/matrix_transform.hpp"
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
 #include "hw3_scenes.h"
+#include "MyCamera.h"
 
 
 using namespace hw3;
-const float cameraSpeedFactor = 100.0f;
 
 /**
  * @brief Process input from the keyboard (Basic)
@@ -19,42 +19,7 @@ void processInput(GLFWwindow *window) {
         glfwSetWindowShouldClose(window, true);
 }
 
-/**
- * @brief Process input from the keyboard (Advanced)
- * @param window The GLFW window
- * @param cameraPos The position of the camera
- * @param cameraFront The front vector of the camera
- * @param cameraUp The up vector of the camera
- * @param deltaTime The time between the current frame and the last frame
- */
-void processInput(GLFWwindow *window, glm::vec3 &cameraPos, glm::vec3 &cameraFront, glm::vec3 &cameraUp,
-                  const glm::vec3 &initialCameraPos, const glm::vec3 &initialCameraFront, const glm::vec3 &initialCameraUp,
-                  float deltaTime)  {
-    float cameraSpeed = cameraSpeedFactor * deltaTime; // adjust the speed
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-        cameraPos = initialCameraPos;
-        cameraFront = initialCameraFront;
-        cameraUp = initialCameraUp;
-    }
-    // get mouse click and scroll
-    // left A, right D, up W, down S
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    }
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    }
-}
+
 
 
 
@@ -332,7 +297,7 @@ void hw_3_2(const std::vector<std::string> &params) {
         glUseProgram(shaderProgram);
 
         // Create transformations
-        glm::mat4 transform = createTransformationMatrix(SCR_WIDTH, SCR_HEIGHT,cameraSpeedFactor);
+        glm::mat4 transform = createTransformationMatrix(SCR_WIDTH, SCR_HEIGHT,2.0f);
 
         // Get the transformation uniform location and set the transformation matrix
         unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
@@ -406,6 +371,8 @@ void hw_3_3(const std::vector<std::string> &params) {
     glm::vec3 initialCameraFront = cameraFront;
     glm::vec3 initialCameraUp = cameraUp;
 
+    MyCamera camera(cameraPos, cameraUp, cameraFront);
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -468,7 +435,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        processInput(window, cameraPos, cameraFront, cameraUp, initialCameraPos, initialCameraFront, initialCameraUp, deltaTime);
+        camera.ProcessKeyboard(window, deltaTime);
 
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -491,7 +458,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // Calculate view matrix once
-        glm::mat4 view_matrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 view_matrix = camera.GetViewMatrix();  // Get the view matrix from MyCamera
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
 
@@ -585,6 +552,8 @@ void hw_3_4(const std::vector<std::string> &params) {
     glm::vec3 initialCameraFront = cameraFront;
     glm::vec3 initialCameraUp = cameraUp;
 
+    MyCamera camera(cameraPos, cameraUp, cameraFront);
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -650,7 +619,7 @@ void hw_3_4(const std::vector<std::string> &params) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        processInput(window, cameraPos, cameraFront, cameraUp, initialCameraPos, initialCameraFront, initialCameraUp, deltaTime);
+        camera.ProcessKeyboard(window, deltaTime);
 
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -673,9 +642,10 @@ void hw_3_4(const std::vector<std::string> &params) {
         glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // Calculate view matrix once
-        glm::mat4 view_matrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 view_matrix = camera.GetViewMatrix();  // Get the view matrix from MyCamera
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
+
 
         // Render each mesh
         for (int i = 0; i < scene.meshes.size(); i++) {
