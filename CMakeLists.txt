@@ -43,6 +43,8 @@ set(SRCS src/3rdparty/glad.h
          src/hw3.cpp
          src/hw3_scenes.cpp
          src/image.cpp
+        src/MyCamera.cpp
+        src/MyCamera.h
 )
 
 add_library(balboa_lib STATIC ${SRCS})

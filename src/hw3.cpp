@@ -2,114 +2,30 @@
 #include "3rdparty/glad.h" // needs to be included before GLFW!
 #include "3rdparty/glfw/include/GLFW/glfw3.h"
 #include "3rdparty/glm/glm/glm.hpp"
-#include "3rdparty/glm/glm/gtc/matrix_transform.hpp"
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
 #include "hw3_scenes.h"
+#include "MyCamera.h"
+
 
 
 using namespace hw3;
-const float cameraSpeedFactor = 100.0f;
 
-/**
- * @brief Process input from the keyboard (Basic)
- * @param window The GLFW window
- */
-void processInput(GLFWwindow *window) {
+MyCamera *camera = nullptr;
+
+void processInput(GLFWwindow* window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 }
 
-/**
- * @brief Process input from the keyboard (Advanced)
- * @param window The GLFW window
- * @param cameraPos The position of the camera
- * @param cameraFront The front vector of the camera
- * @param cameraUp The up vector of the camera
- * @param deltaTime The time between the current frame and the last frame
- */
-void processInput(GLFWwindow *window, glm::vec3 &cameraPos, glm::vec3 &cameraFront, glm::vec3 &cameraUp,
-                  const glm::vec3 &initialCameraPos, const glm::vec3 &initialCameraFront, const glm::vec3 &initialCameraUp,
-                  float deltaTime)  {
-    float cameraSpeed = cameraSpeedFactor * deltaTime; // adjust the speed
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-        cameraPos = initialCameraPos;
-        cameraFront = initialCameraFront;
-        cameraUp = initialCameraUp;
-    }
-    // get mouse click and scroll
-    // left A, right D, up W, down S
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS) {
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    }
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS) {
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    }
-}
-
-
-
-
-
-/**
- * @brief Callback function for when the window is resized
- * @param window The GLFW window
- * @param width The new width
- * @param height The new height
- */
 void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-/**
- * @brief Check for shader compile errors
- * @param shader The shader to check
- * @param type The type of shader
- */
-void checkCompileErrors(GLuint shader, std::string type) {
-    GLint success;
-    GLchar infoLog[1024];
-    if (type != "PROGRAM") {
-        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success) {
-            glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-            std::cerr << "ERROR::SHADER_COMPILATION_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
-    } else {
-        glGetProgramiv(shader, GL_LINK_STATUS, &success);
-        if (!success) {
-            glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-            std::cerr << "ERROR::PROGRAM_LINKING_ERROR of type: " << type << "\n" << infoLog << "\n -- --------------------------------------------------- -- " << std::endl;
-        }
-    }
-}
-
-/**
- * @brief Compile a shader
- * @param type The type of shader
- * @param shaderSource The shader source code
- * @return The shader
- */
-GLuint compileShader(GLenum type, const char* shaderSource) {
-    // Create a shader object
+GLuint CompileShader(GLenum type, const char* shaderSource) {
     GLuint shader = glCreateShader(type);
-
-    // Set the source code in the shader
     glShaderSource(shader, 1, &shaderSource, NULL);
-
-    // Compile the shader
     glCompileShader(shader);
 
-    // Check for shader compile errors
     int success;
     char infoLog[512];
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
@@ -121,28 +37,15 @@ GLuint compileShader(GLenum type, const char* shaderSource) {
     return shader;
 }
 
-/**
- * @brief Create a shader program
- * @param vertexShaderSource The vertex shader source code
- * @param fragmentShaderSource The fragment shader source code
- * @return The shader program
- */
 GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
-    // Compile vertex and fragment shaders
-    GLuint vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
+    GLuint vertexShader = CompileShader(GL_VERTEX_SHADER, vertexShaderSource);
+    GLuint fragmentShader = CompileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
 
-    // Create a shader program
     GLuint shaderProgram = glCreateProgram();
-
-    // Attach compiled shaders to the program
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
-
-    // Link the shader program
     glLinkProgram(shaderProgram);
 
-    // Check for linking errors
     int success;
     char infoLog[512];
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
@@ -151,19 +54,12 @@ GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentS
         std::cerr << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << infoLog << std::endl;
     }
 
-    // Delete the shaders as they're linked into our program now and no longer necessary
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
 
     return shaderProgram;
 }
 
-/**
- * @brief Create a transformation matrix (for rotating a triangle)
- * @param screenWidth The width of the window
- * @param screenHeight The height of the window
- * @return The transformation matrix
- */
 glm::mat4 createTransformationMatrix(int screenWidth, int screenHeight, float speed) {
     glm::mat4 transform = glm::mat4(1.0f);
     float aspectRatio = (float)screenWidth / (float)screenHeight;
@@ -173,15 +69,8 @@ glm::mat4 createTransformationMatrix(int screenWidth, int screenHeight, float sp
     return transform;
 }
 
-/**
- * @brief Convert a Matrix4x4f to a glm::mat4
- * @param m The Matrix4x4f to convert
- * @return The glm::mat4
- */
 glm::mat4 convertToGLMmat4(const Matrix4x4f& m) {
     glm::mat4 glmMatrix;
-    // glm::mat4 is column-major, but Matrix4x4f is row-major
-    // Therefore, we need to transpose the matrix during assignment
     for (int row = 0; row < 4; row++) {
         for (int col = 0; col < 4; col++) {
             glmMatrix[col][row] = m(row, col);
@@ -189,6 +78,27 @@ glm::mat4 convertToGLMmat4(const Matrix4x4f& m) {
     }
     return glmMatrix;
 }
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if (camera) {
+        if (camera->firstMouse) {
+            camera->lastX = xpos;
+            camera->lastY = ypos;
+            camera->firstMouse = false;
+        }
+
+        float xoffset = xpos - camera->lastX;
+        float yoffset = camera->lastY - ypos; // Reversed since y-coordinates go from bottom to top
+        camera->lastX = xpos;
+        camera->lastY = ypos;
+
+        camera->ProcessMouseMovement(xoffset, yoffset);
+    }
+}
+
+
+
+
 
 /**
  * @brief HW 3.1: Render a OpenGL window
@@ -332,7 +242,7 @@ void hw_3_2(const std::vector<std::string> &params) {
         glUseProgram(shaderProgram);
 
         // Create transformations
-        glm::mat4 transform = createTransformationMatrix(SCR_WIDTH, SCR_HEIGHT,cameraSpeedFactor);
+        glm::mat4 transform = createTransformationMatrix(SCR_WIDTH, SCR_HEIGHT,2.0f);
 
         // Get the transformation uniform location and set the transformation matrix
         unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
@@ -362,6 +272,7 @@ void hw_3_2(const std::vector<std::string> &params) {
  * @param params json file
  */
 void hw_3_3(const std::vector<std::string> &params) {
+
     // HW 3.3: Render a scene
     if (params.size() == 0) {
         return;
@@ -385,7 +296,7 @@ void hw_3_3(const std::vector<std::string> &params) {
                                      "   gl_Position = projection_matrix * view_matrix * model_matrix  * vec4(aPos, 1.0);\n"
                                      "   ColorsVector = Colors;\n"
                                      "}\0";
-
+//
     const char *fragmentShaderSource = "#version 330 core\n"
                                        "out vec4 FragColor;\n"
                                        "in vec3 ColorsVector;\n"
@@ -406,6 +317,8 @@ void hw_3_3(const std::vector<std::string> &params) {
     glm::vec3 initialCameraFront = cameraFront;
     glm::vec3 initialCameraUp = cameraUp;
 
+    camera = new MyCamera(SCR_WIDTH, SCR_HEIGHT, cameraPos, cameraUp, cameraFront);
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -418,6 +331,8 @@ void hw_3_3(const std::vector<std::string> &params) {
     }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
 
 
 
@@ -468,7 +383,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        processInput(window, cameraPos, cameraFront, cameraUp, initialCameraPos, initialCameraFront, initialCameraUp, deltaTime);
+        camera->ProcessKeyboard(window, deltaTime);
 
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -491,7 +406,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // Calculate view matrix once
-        glm::mat4 view_matrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 view_matrix = camera->GetViewMatrix();  // Get the view matrix from MyCamera
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
 
@@ -585,6 +500,9 @@ void hw_3_4(const std::vector<std::string> &params) {
     glm::vec3 initialCameraFront = cameraFront;
     glm::vec3 initialCameraUp = cameraUp;
 
+
+    camera = new MyCamera(SCR_WIDTH, SCR_HEIGHT, cameraPos, cameraUp, cameraFront);
+
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -597,6 +515,8 @@ void hw_3_4(const std::vector<std::string> &params) {
 
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
+
 
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
@@ -650,7 +570,8 @@ void hw_3_4(const std::vector<std::string> &params) {
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        processInput(window, cameraPos, cameraFront, cameraUp, initialCameraPos, initialCameraFront, initialCameraUp, deltaTime);
+        camera->ProcessKeyboard(window, deltaTime);
+
 
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -673,9 +594,10 @@ void hw_3_4(const std::vector<std::string> &params) {
         glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // Calculate view matrix once
-        glm::mat4 view_matrix = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 view_matrix = camera->GetViewMatrix();  // Get the view matrix from MyCamera
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
+
 
         // Render each mesh
         for (int i = 0; i < scene.meshes.size(); i++) {
