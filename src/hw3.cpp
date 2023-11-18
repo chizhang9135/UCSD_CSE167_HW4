@@ -20,7 +20,7 @@ MyCamera *camera = nullptr;
 /**
  * @brief Global variable for extra credit
  */
-const bool hw_3_4_extra = false;
+const bool hw_3_4_extra = true;
 
 /**
  * @brief Process input from keyboard
@@ -683,9 +683,9 @@ void hw_3_4(const std::vector<std::string> &params) {
             lastFrame = currentFrame;
 
             // Update light position based on time
-            float lightX = sin(currentFrame) * 2.0f;
-            float lightY = sin(currentFrame) * 2.0f;
-            float lightZ = cos(currentFrame) * 2.0f;
+            float lightX = sin(currentFrame) * 4.0f;
+            float lightY = sin(currentFrame) * 4.0f;
+            float lightZ = cos(currentFrame) * 4.0f;
             unsigned int lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
             glUniform3f(lightPosLoc, lightX, lightY, lightZ);
         }

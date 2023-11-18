@@ -41,9 +41,6 @@ public:
     float InitialPitch;
 
 
-    float screenWidth;
-    float screenHeight;
-
     float lastX;
     float lastY;
     bool firstMouse;
