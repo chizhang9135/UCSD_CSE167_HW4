@@ -18,6 +18,11 @@ using namespace hw3;
 MyCamera *camera = nullptr;
 
 /**
+ * @brief Global variable for extra credit
+ */
+const bool hw_3_4_extra = true;
+
+/**
  * @brief Process input from keyboard
  * @param window GLFW window
  */
@@ -134,12 +139,14 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 
         float xoffset = xpos - camera->lastX;
         float yoffset = camera->lastY - ypos; // Reversed since y-coordinates go from bottom to top
+
         camera->lastX = xpos;
         camera->lastY = ypos;
 
         camera->ProcessMouseMovement(xoffset, yoffset);
     }
 }
+
 //</editor-fold>
 
 //<editor-fold desc="HW 3.1 - 3.2: Window and rotating triangle">
@@ -523,7 +530,6 @@ void hw_3_4(const std::vector<std::string> &params) {
                                        "uniform vec3 lightPos;\n"
                                        "uniform vec3 lightColor;\n"
                                        "uniform vec3 viewPos; // Camera/view position\n"
-                                       "uniform vec3 objectColor;\n"
                                        "\n"
                                        "void main()\n"
                                        "{\n"
@@ -533,7 +539,7 @@ void hw_3_4(const std::vector<std::string> &params) {
                                        "\n"
                                        "    // Diffuse lighting\n"
                                        "    vec3 norm = normalize(NormalVector);\n"
-                                       "    vec3 lightDir = normalize(lightPos - FragPos);\n"
+                                       "    vec3 lightDir = normalize(lightPos);\n"
                                        "    float diff = max(dot(norm, lightDir), 0.0);\n"
                                        "    vec3 diffuse = diff * lightColor;\n"
                                        "\n"
@@ -541,11 +547,11 @@ void hw_3_4(const std::vector<std::string> &params) {
                                        "    float specularStrength = 0.5;\n"
                                        "    vec3 viewDir = normalize(viewPos - FragPos);\n"
                                        "    vec3 reflectDir = reflect(-lightDir, norm);  \n"
-                                       "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32); // Shininess factor\n"
+                                       "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);\n"
                                        "    vec3 specular = specularStrength * spec * lightColor;  \n"
                                        "\n"
                                        "    // Combining the three components\n"
-                                       "    vec3 result = (ambient + diffuse + specular) * objectColor;\n"
+                                       "    vec3 result = (ambient + diffuse + specular) * ColorsVector;\n"
                                        "    FragColor = vec4(result, 1.0f);\n"
                                        "}";
 
@@ -558,9 +564,7 @@ void hw_3_4(const std::vector<std::string> &params) {
     float deltaTime = 0.0f;                               // Time between current frame and last frame
     float lastFrame = 0.0f;                               // Time of last frame
 
-    glm::vec3 initialCameraPos = cameraPos;
-    glm::vec3 initialCameraFront = cameraFront;
-    glm::vec3 initialCameraUp = cameraUp;
+
 
 
     camera = new MyCamera(SCR_WIDTH, SCR_HEIGHT, cameraPos, cameraUp, cameraFront);
@@ -652,16 +656,39 @@ void hw_3_4(const std::vector<std::string> &params) {
                 0.0f, 0.0f, -(zFar * zNear) / (zFar - zNear), 0.0f
         );
 
-        unsigned int projection_matrixLoc = glGetUniformLocation(shaderProgram, "projection_matrix");
-        glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection_matrix"), 1, GL_FALSE, glm::value_ptr(projection_matrix));
 
         // Calculate view matrix once
         glm::mat4 view_matrix = camera->GetViewMatrix();  // Get the view matrix from MyCamera
-        unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
-        glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
+
+        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view_matrix"), 1, GL_FALSE, glm::value_ptr(view_matrix));
 
         unsigned int viewPosLoc = glGetUniformLocation(shaderProgram, "viewPos");
         glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+
+
+        //lightcolor 111
+        unsigned int lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
+        glUniform3f(lightColorLoc, 1.0,1.0,1.0);
+
+        if (!hw_3_4_extra) {
+            //lightpos 111
+            unsigned int lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
+            glUniform3f(lightPosLoc, 1.0,1.0,1.0);
+        } else {
+            //lightpos 000
+            float currentFrame = glfwGetTime();
+            deltaTime = currentFrame - lastFrame;
+            lastFrame = currentFrame;
+
+            // Update light position based on time
+            float lightX = sin(currentFrame) * 4.0f;
+            float lightY = sin(currentFrame) * 4.0f;
+            float lightZ = cos(currentFrame) * 4.0f;
+            unsigned int lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
+            glUniform3f(lightPosLoc, lightX, lightY, lightZ);
+        }
 
         // Render each mesh
         for (int i = 0; i < scene.meshes.size(); i++) {
