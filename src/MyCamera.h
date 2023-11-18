@@ -7,8 +7,6 @@
 #include "3rdparty/glm/glm/glm.hpp"
 #include "3rdparty/glm/glm/gtc/matrix_transform.hpp"
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
-#include "hw3.h"
-#include "hw3_scenes.h"
 
 
 class MyCamera {
@@ -23,7 +21,7 @@ public:
     const float sensitivity = 0.1f;  // Adjust sensitivity as needed
 
     // Constructor with vectors
-    MyCamera(const hw3::Camera& camera);
+    MyCamera(float screenWidth, float screenHeight, glm::vec3 position, glm::vec3 up, glm::vec3 front);
 
     // Resets the camera to its initial state
     void Reset();
