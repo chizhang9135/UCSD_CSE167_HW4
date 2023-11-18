@@ -5,11 +5,11 @@
 #include "3rdparty/glm/glm/gtc/type_ptr.hpp"
 #include "hw3_scenes.h"
 #include "MyCamera.h"
-
-
+#include "Shader.h"
+#include <iostream>
+#include <filesystem>
 
 using namespace hw3;
-
 
 //<editor-fold desc="Global variables and helper functions">
 /**
@@ -213,21 +213,7 @@ void hw_3_1(const std::vector<std::string>& params) {
 void hw_3_2(const std::vector<std::string> &params) {
     const unsigned int SCR_WIDTH = 800;
     const unsigned int SCR_HEIGHT = 600;
-    const char *vertexShaderSource = "#version 330 core\n"
-                                     "layout (location = 0) in vec3 aPos;\n"
-                                     "uniform mat4 transform;\n"
-                                     "void main()\n"
-                                     "{\n"
-                                     "   gl_Position = transform * vec4(aPos, 1.0);\n"
-                                     "}\0";
 
-    const char *fragmentShaderSource = "#version 330 core\n"
-                                       "out vec4 FragColor;\n"
-                                       "void main()\n"
-                                       "{\n"
-                                       "   FragColor = vec4(0.9f, 0.4f, 0.4f, 1.0f);\n"
-                                       "}\n\0";
-    // Initialize GLFW
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -253,8 +239,7 @@ void hw_3_2(const std::vector<std::string> &params) {
         return;
     }
 
-    // Build and compile our shader program
-    GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
+    Shader ourShader("../src/hw_3_2.vs", "../src/hw_3_2.fs");
 
 
     float vertices[] = {
@@ -289,14 +274,12 @@ void hw_3_2(const std::vector<std::string> &params) {
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Activate shader program
-        glUseProgram(shaderProgram);
+        ourShader.use();
 
         // Create transformations
         glm::mat4 transform = createTransformationMatrix(SCR_WIDTH, SCR_HEIGHT,2.0f);
 
-        // Get the transformation uniform location and set the transformation matrix
-        unsigned int transformLoc = glGetUniformLocation(shaderProgram, "transform");
-        glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(transform));
+        ourShader.setMat4("transform", transform);
 
         // Render the triangle
         glBindVertexArray(VAO);
@@ -310,7 +293,7 @@ void hw_3_2(const std::vector<std::string> &params) {
     // De-allocate all resources
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
-    glDeleteProgram(shaderProgram);
+
 
     // GLFW: terminate, clearing all previously allocated GLFW resources.
     glfwTerminate();
@@ -335,26 +318,6 @@ void hw_3_3(const std::vector<std::string> &params) {
     unsigned int SCR_HEIGHT = scene.camera.resolution.y;
     float background[3] = {scene.background.x, scene.background.y, scene.background.z};
 
-    const char *vertexShaderSource = "#version 330 core\n"
-                                     "layout (location = 0) in vec3 aPos;\n"
-                                     "layout (location = 1) in vec3 Colors;\n"
-                                     "uniform mat4 model_matrix;\n"
-                                     "uniform mat4 view_matrix;\n"
-                                     "uniform mat4 projection_matrix;\n"
-                                     "out vec3 ColorsVector;\n"
-                                     "void main()\n"
-                                     "{\n"
-                                     "   gl_Position = projection_matrix * view_matrix * model_matrix  * vec4(aPos, 1.0);\n"
-                                     "   ColorsVector = Colors;\n"
-                                     "}\0";
-//
-    const char *fragmentShaderSource = "#version 330 core\n"
-                                       "out vec4 FragColor;\n"
-                                       "in vec3 ColorsVector;\n"
-                                       "void main()\n"
-                                       "{\n"
-                                       "   FragColor = vec4(ColorsVector, 1.0f);\n"
-                                       "}\n\0";
 
     glm::mat4 camToWorld = convertToGLMmat4(scene.camera.cam_to_world);
     glm::vec3 cameraPos = glm::vec3(camToWorld[3]);      // Camera position is in the 4th column
@@ -392,7 +355,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         return;
     }
 
-    GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
+    Shader ourShader("../src/hw_3_3.vs", "../src/hw_3_3.fs");
 
     std::vector<GLuint> VAOs;
     for (auto &mesh : scene.meshes) {
@@ -439,8 +402,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         glClearColor(background[0], background[1], background[2], 1.0f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-        // Activate shader program
-        glUseProgram(shaderProgram);
+        ourShader.use();
 
         float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
         float scale = scene.camera.s; // This is the scaling/film size parameter
@@ -453,19 +415,16 @@ void hw_3_3(const std::vector<std::string> &params) {
                 0.0f,                          0.0f,                       -(zFar * zNear) / (zFar - zNear), 0.0f
         );
 
-        unsigned int projection_matrixLoc = glGetUniformLocation(shaderProgram, "projection_matrix");
-        glUniformMatrix4fv(projection_matrixLoc, 1, GL_FALSE, glm::value_ptr(projection_matrix));
+        ourShader.setMat4("projection_matrix", projection_matrix);
 
         // Calculate view matrix once
         glm::mat4 view_matrix = camera->GetViewMatrix();  // Get the view matrix from MyCamera
-        unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
-        glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
+        ourShader.setMat4("view_matrix", view_matrix);
 
         // Render each mesh
         for (int i = 0; i < scene.meshes.size(); i++) {
             glm::mat4 model_matrix = convertToGLMmat4(scene.meshes[i].model_matrix);
-            unsigned int model_matrixLoc = glGetUniformLocation(shaderProgram, "model_matrix");
-            glUniformMatrix4fv(model_matrixLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+            ourShader.setMat4("model_matrix", model_matrix);
             glBindVertexArray(VAOs[i]);
 //            glDrawArrays(GL_TRIANGLES, 0, scene.meshes[i].vertices.size());
             glDrawElements(GL_TRIANGLES, scene.meshes[i].faces.size() * 3, GL_UNSIGNED_INT, 0);
@@ -478,7 +437,6 @@ void hw_3_3(const std::vector<std::string> &params) {
     for (int i = 0; i < VAOs.size(); i++) {
         glDeleteVertexArrays(1, &VAOs[i]);
     }
-    glDeleteProgram(shaderProgram);
     glfwTerminate();
 
     //free camera
@@ -503,57 +461,7 @@ void hw_3_4(const std::vector<std::string> &params) {
     unsigned int SCR_HEIGHT = scene.camera.resolution.y;
     float background[3] = {scene.background.x, scene.background.y, scene.background.z};
 
-    const char *vertexShaderSource = "#version 330 core\n"
-                                     "layout (location = 0) in vec3 aPos;\n"
-                                     "layout (location = 1) in vec3 Colors;\n"
-                                     "layout (location = 2) in vec3 aNormal;\n"
-                                     "uniform mat4 model_matrix;\n"
-                                     "uniform mat4 view_matrix;\n"
-                                     "uniform mat4 projection_matrix;\n"
-                                     "out vec3 ColorsVector;\n"
-                                     "out vec3 NormalVector;\n"
-                                     "out vec3 FragPos;\n"
-                                     "void main()\n"
-                                     "{\n"
-                                     "   gl_Position = projection_matrix * view_matrix * model_matrix  * vec4(aPos, 1.0);\n"
-                                     "   ColorsVector = Colors;\n"
-                                     "   NormalVector = mat3(transpose(inverse(model_matrix))) * aNormal;\n"
-                                     "   FragPos = vec3(model_matrix * vec4(aPos, 1.0));\n"
-                                     "}\0";
 
-    const char *fragmentShaderSource = "#version 330 core\n"
-                                       "out vec4 FragColor;\n"
-                                       "in vec3 ColorsVector;\n"
-                                       "in vec3 NormalVector;\n"
-                                       "in vec3 FragPos;\n"
-                                       "\n"
-                                       "uniform vec3 lightPos;\n"
-                                       "uniform vec3 lightColor;\n"
-                                       "uniform vec3 viewPos; // Camera/view position\n"
-                                       "\n"
-                                       "void main()\n"
-                                       "{\n"
-                                       "    // Ambient lighting\n"
-                                       "    float ambientStrength = 0.1;\n"
-                                       "    vec3 ambient = ambientStrength * lightColor;\n"
-                                       "\n"
-                                       "    // Diffuse lighting\n"
-                                       "    vec3 norm = normalize(NormalVector);\n"
-                                       "    vec3 lightDir = normalize(lightPos);\n"
-                                       "    float diff = max(dot(norm, lightDir), 0.0);\n"
-                                       "    vec3 diffuse = diff * lightColor;\n"
-                                       "\n"
-                                       "    // Specular lighting\n"
-                                       "    float specularStrength = 0.5;\n"
-                                       "    vec3 viewDir = normalize(viewPos - FragPos);\n"
-                                       "    vec3 reflectDir = reflect(-lightDir, norm);  \n"
-                                       "    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);\n"
-                                       "    vec3 specular = specularStrength * spec * lightColor;  \n"
-                                       "\n"
-                                       "    // Combining the three components\n"
-                                       "    vec3 result = (ambient + diffuse + specular) * ColorsVector;\n"
-                                       "    FragColor = vec4(result, 1.0f);\n"
-                                       "}";
 
     glm::mat4 camToWorld = convertToGLMmat4(scene.camera.cam_to_world);
 
@@ -590,7 +498,7 @@ void hw_3_4(const std::vector<std::string> &params) {
         return;
     }
 
-    GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
+    Shader ourShader("../src/hw_3_4.vs", "../src/hw_3_4.fs");
 
     std::vector<GLuint> VAOs;
     for (auto &mesh : scene.meshes) {
@@ -643,7 +551,7 @@ void hw_3_4(const std::vector<std::string> &params) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Activate shader program
-        glUseProgram(shaderProgram);
+        ourShader.use();
 
         float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
         float scale = scene.camera.s; // This is the scaling/film size parameter
@@ -657,44 +565,34 @@ void hw_3_4(const std::vector<std::string> &params) {
         );
 
 
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection_matrix"), 1, GL_FALSE, glm::value_ptr(projection_matrix));
-
+        ourShader.setMat4("projection_matrix", projection_matrix);
         // Calculate view matrix once
         glm::mat4 view_matrix = camera->GetViewMatrix();  // Get the view matrix from MyCamera
 
-        glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view_matrix"), 1, GL_FALSE, glm::value_ptr(view_matrix));
+        ourShader.setMat4("view_matrix", view_matrix);
 
-        unsigned int viewPosLoc = glGetUniformLocation(shaderProgram, "viewPos");
-        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+        ourShader.setVec3("viewPos", cameraPos);
 
 
         //lightcolor 111
-        unsigned int lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
-        glUniform3f(lightColorLoc, 1.0,1.0,1.0);
+        ourShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
 
         if (!hw_3_4_extra) {
             //lightpos 111
-            unsigned int lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
-            glUniform3f(lightPosLoc, 1.0,1.0,1.0);
+            ourShader.setVec3("lightPos", 1.0f, 1.0f, 1.0f);
         } else {
-            //lightpos 000
-            float currentFrame = glfwGetTime();
-            deltaTime = currentFrame - lastFrame;
-            lastFrame = currentFrame;
 
             // Update light position based on time
             float lightX = sin(currentFrame) * 4.0f;
             float lightY = sin(currentFrame) * 4.0f;
             float lightZ = cos(currentFrame) * 4.0f;
-            unsigned int lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
-            glUniform3f(lightPosLoc, lightX, lightY, lightZ);
+            ourShader.setVec3("lightPos", lightX, lightY, lightZ);
         }
 
         // Render each mesh
         for (int i = 0; i < scene.meshes.size(); i++) {
             glm::mat4 model_matrix = convertToGLMmat4(scene.meshes[i].model_matrix);
-            unsigned int model_matrixLoc = glGetUniformLocation(shaderProgram, "model_matrix");
-            glUniformMatrix4fv(model_matrixLoc, 1, GL_FALSE, glm::value_ptr(model_matrix));
+            ourShader.setMat4("model_matrix", model_matrix);
             glBindVertexArray(VAOs[i]);
             glDrawElements(GL_TRIANGLES, scene.meshes[i].faces.size() * 3, GL_UNSIGNED_INT, 0);
         }
@@ -706,7 +604,7 @@ void hw_3_4(const std::vector<std::string> &params) {
     for (int i = 0; i < VAOs.size(); i++) {
         glDeleteVertexArrays(1, &VAOs[i]);
     }
-    glDeleteProgram(shaderProgram);
+
     glfwTerminate();
 
     //free camera
