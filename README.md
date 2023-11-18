@@ -2,6 +2,7 @@
 
 ## Optimization I done:
 1. for 3_3, When press R, reset the camera to the initial position
+2. code refactoring
 
 
 ## Normal Part
