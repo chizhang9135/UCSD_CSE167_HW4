@@ -17,7 +17,7 @@ public:
     glm::vec3 Right;
     glm::vec3 WorldUp;
 
-    const float cameraSpeedFactor = 150.0f;
+    const float cameraSpeedFactor = 2.0f;
     const float sensitivity = 0.1f;  // Adjust sensitivity as needed
 
     // Constructor with vectors

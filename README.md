@@ -22,10 +22,8 @@ const bool hw_3_4_extra = false;
 ```
 
 ## Extra Credit
-1. hw_3_3:
-   1. mouse control
-   2. light animation
-   3. TODO
+1. mouse control (the ouput is combined with output for hw_3_3)
+2. light animation (hw_4_name_animation.mp4)
 
-### Part Completed:
+
 

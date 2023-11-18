@@ -20,7 +20,7 @@ MyCamera *camera = nullptr;
 /**
  * @brief Global variable for extra credit
  */
-const bool hw_3_4_extra = false;
+const bool hw_3_4_extra = true;
 
 /**
  * @brief Process input from keyboard
