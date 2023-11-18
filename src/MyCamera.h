@@ -37,9 +37,9 @@ public:
     glm::vec3 InitialPosition;
     glm::vec3 InitialFront;
     glm::vec3 InitialUp;
+    float InitialYaw;
+    float InitialPitch;
 
-    float screenWidth;
-    float screenHeight;
 
     float lastX;
     float lastY;

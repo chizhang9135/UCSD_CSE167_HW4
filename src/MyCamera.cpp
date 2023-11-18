@@ -3,14 +3,19 @@
 
 MyCamera::MyCamera(float screenWidth, float screenHeight, glm::vec3 position, glm::vec3 up, glm::vec3 front)
         : Position(position), Front(front), WorldUp(up) {
-    InitialPosition = position;
-    InitialFront = front;
-    InitialUp = up;
+    yaw = glm::degrees(atan2(Front.z, Front.x));
+    pitch = glm::degrees(asin(Front.y));
+
     lastX = screenWidth / 2.0f;
     lastY = screenHeight / 2.0f;
     firstMouse = true;
-    yaw = -90.0f;
-    pitch = 0.0f;
+
+    InitialPosition = position;
+    InitialFront = front;
+    InitialUp = up;
+    InitialYaw = yaw;
+    InitialPitch = pitch;
+
     updateCameraVectors();
 }
 
@@ -18,6 +23,8 @@ void MyCamera::Reset() {
     Position = InitialPosition;
     Front = InitialFront;
     Up = InitialUp;
+    yaw = InitialYaw;
+    pitch = InitialPitch;
     updateCameraVectors();
 }
 
@@ -49,6 +56,12 @@ glm::mat4 MyCamera::GetViewMatrix() {
 }
 
 void MyCamera::updateCameraVectors() {
+    glm::vec3 front;
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    Front = glm::normalize(front);
+
     Right = glm::normalize(glm::cross(Front, WorldUp));
     Up = glm::normalize(glm::cross(Right, Front));
 }
@@ -57,11 +70,10 @@ void MyCamera::ProcessMouseMovement(float xoffset, float yoffset) {
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
-    // Forward and backward movement
-    Position += Front * yoffset;
+    yaw += xoffset;
+    pitch += yoffset;
 
-    // Right and left movement
-    Position += Right * xoffset;
+
+    updateCameraVectors();
 }
-
 

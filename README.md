@@ -16,11 +16,15 @@ const float cameraSpeedFactor = 150.0f;
 const float sensitivity = 0.1f;  // Adjust sensitivity as needed
 ```
 
+### Notes: Need to change `hw_3_4_extra` to true in `hw3.cpp` to run extra credit for hw_3_4
+```c++
+const bool hw_3_4_extra = false;
+```
 
 ## Extra Credit
 1. hw_3_3:
    1. mouse control
-   2. TODO
+   2. light animation
    3. TODO
 
 ### Part Completed:
