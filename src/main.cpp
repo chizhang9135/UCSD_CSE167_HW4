@@ -123,6 +123,8 @@ int main(int argc, char *argv[]) {
         hw_3_4(parameters);
     } else if (hw_num == "3_5") {
         hw_3_5(parameters);
+    } else if (hw_num == "3_3_extra") {
+        hw_3_3_extra(parameters);
     } else {
         std::cout << "Invalid hw number." << std::endl;
     }
