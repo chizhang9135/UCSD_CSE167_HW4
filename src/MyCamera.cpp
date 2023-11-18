@@ -1,23 +1,30 @@
 #include "MyCamera.h"
 
 
-MyCamera::MyCamera(float screenWidth, float screenHeight, glm::vec3 position, glm::vec3 up, glm::vec3 front)
-        : Position(position), Front(front), WorldUp(up) {
+MyCamera::MyCamera(const hw3::Camera& camera) {
+    glm::mat4 camToWorld = convertToGLMmat4(camera.cam_to_world);
+
+    Position = glm::vec3(camToWorld[3]);
+    Front = -glm::vec3(camToWorld[2]); // Forward vector is negative Z
+    Up = glm::vec3(camToWorld[1]); // Up vector is Y axis
+    WorldUp = Up;
+
     yaw = glm::degrees(atan2(Front.z, Front.x));
     pitch = glm::degrees(asin(Front.y));
 
-    lastX = screenWidth / 2.0f;
-    lastY = screenHeight / 2.0f;
+    lastX = camera.resolution.x / 2.0f;
+    lastY = camera.resolution.y / 2.0f;
     firstMouse = true;
 
-    InitialPosition = position;
-    InitialFront = front;
-    InitialUp = up;
+    InitialPosition = Position;
+    InitialFront = Front;
+    InitialUp = Up;
     InitialYaw = yaw;
     InitialPitch = pitch;
 
     updateCameraVectors();
 }
+
 
 void MyCamera::Reset() {
     Position = InitialPosition;

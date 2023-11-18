@@ -326,9 +326,6 @@ void hw_3_3(const std::vector<std::string> &params) {
     Scene scene = parse_scene(params[0]);
     std::cout << scene << std::endl;
 
-    unsigned int SCR_WIDTH = scene.camera.resolution.x;
-    unsigned int SCR_HEIGHT = scene.camera.resolution.y;
-    float background[3] = {scene.background.x, scene.background.y, scene.background.z};
 
     const char *vertexShaderSource = "#version 330 core\n"
                                      "layout (location = 0) in vec3 aPos;\n"
@@ -351,25 +348,21 @@ void hw_3_3(const std::vector<std::string> &params) {
                                        "   FragColor = vec4(ColorsVector, 1.0f);\n"
                                        "}\n\0";
 
-    glm::mat4 camToWorld = convertToGLMmat4(scene.camera.cam_to_world);
-    glm::vec3 cameraPos = glm::vec3(camToWorld[3]);      // Camera position is in the 4th column
-    glm::vec3 cameraFront = -glm::vec3(camToWorld[2]);   // Forward vector is negative Z (third column)
-    glm::vec3 cameraUp = glm::vec3(camToWorld[1]);       // Up vector is the Y axis (second column)
+
 
     float deltaTime = 0.0f;                               // Time between current frame and last frame
     float lastFrame = 0.0f;                               // Time of last frame
 
-    glm::vec3 initialCameraPos = cameraPos;
-    glm::vec3 initialCameraFront = cameraFront;
-    glm::vec3 initialCameraUp = cameraUp;
 
-    camera = new MyCamera(SCR_WIDTH, SCR_HEIGHT, cameraPos, cameraUp, cameraFront);
+
+    camera = new MyCamera(scene.camera);
+    float background[3] = {scene.background.x, scene.background.y, scene.background.z};
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "HW_3_3", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(camera->screenWidth, camera->screenHeight, "HW_3_3", NULL, NULL);
     if (window == NULL) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
@@ -437,7 +430,7 @@ void hw_3_3(const std::vector<std::string> &params) {
         // Activate shader program
         glUseProgram(shaderProgram);
 
-        float aspectRatio = static_cast<float>(SCR_WIDTH) / static_cast<float>(SCR_HEIGHT);
+        float aspectRatio = static_cast<float>(camera->screenWidth) / static_cast<float>(camera->screenHeight);
         float scale = scene.camera.s; // This is the scaling/film size parameter
         float zNear = scene.camera.z_near;
         float zFar = scene.camera.z_far;
@@ -535,7 +528,7 @@ void hw_3_4(const std::vector<std::string> &params) {
                                        "\n"
                                        "    // Diffuse lighting\n"
                                        "    vec3 norm = normalize(NormalVector);\n"
-                                       "    vec3 lightDir = normalize(lightPos - FragPos);\n"
+                                       "    vec3 lightDir = normalize(vec3(1,1,1));\n"
                                        "    float diff = max(dot(norm, lightDir), 0.0);\n"
                                        "    vec3 diffuse = diff * lightColor;\n"
                                        "\n"
@@ -551,21 +544,10 @@ void hw_3_4(const std::vector<std::string> &params) {
                                        "    FragColor = vec4(result, 1.0f);\n"
                                        "}";
 
-    glm::mat4 camToWorld = convertToGLMmat4(scene.camera.cam_to_world);
-
-    glm::vec3 cameraPos = glm::vec3(camToWorld[3]);      // Camera position is in the 4th column
-    glm::vec3 cameraFront = -glm::vec3(camToWorld[2]);   // Forward vector is negative Z (third column)
-    glm::vec3 cameraUp = glm::vec3(camToWorld[1]);       // Up vector is the Y axis (second column)
-
     float deltaTime = 0.0f;                               // Time between current frame and last frame
     float lastFrame = 0.0f;                               // Time of last frame
 
-    glm::vec3 initialCameraPos = cameraPos;
-    glm::vec3 initialCameraFront = cameraFront;
-    glm::vec3 initialCameraUp = cameraUp;
-
-
-    camera = new MyCamera(SCR_WIDTH, SCR_HEIGHT, cameraPos, cameraUp, cameraFront);
+    camera = new MyCamera(scene.camera);
 
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -608,15 +590,16 @@ void hw_3_4(const std::vector<std::string> &params) {
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(1);
 
+        glGenBuffers(1, &EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.faces.size() * sizeof(Vector3i), mesh.faces.data(), GL_STATIC_DRAW);
+
         glGenBuffers(1, &VBO_normal);
         glBindBuffer(GL_ARRAY_BUFFER, VBO_normal);
         glBufferData(GL_ARRAY_BUFFER, mesh.vertex_normals.size() * sizeof(Vector3f), mesh.vertex_normals.data(), GL_STATIC_DRAW);
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(2);
 
-        glGenBuffers(1, &EBO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.faces.size() * sizeof(Vector3i), mesh.faces.data(), GL_STATIC_DRAW);
 
         glBindVertexArray(0);
 
@@ -662,8 +645,6 @@ void hw_3_4(const std::vector<std::string> &params) {
         unsigned int view_matrixLoc = glGetUniformLocation(shaderProgram, "view_matrix");
         glUniformMatrix4fv(view_matrixLoc, 1, GL_FALSE, glm::value_ptr(view_matrix));
 
-        unsigned int viewPosLoc = glGetUniformLocation(shaderProgram, "viewPos");
-        glUniform3f(viewPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
 
         // Render each mesh
         for (int i = 0; i < scene.meshes.size(); i++) {
