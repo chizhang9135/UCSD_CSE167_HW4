@@ -3,7 +3,7 @@
 ## Description
 All required rendering outputs are in the `output` folder. The `output` folder contains the following:
 1. donut.png
-2. atom.png
+2. atoms.png
 
 ## Some Idea about the onject I created
 There are several objects in the scene. 
