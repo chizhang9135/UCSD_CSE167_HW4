@@ -10,3 +10,6 @@ There are several objects in the scene.
 It is electrolysis of water.  
 2H2O -> 2H2 + O2  
 There are two water molecules, two hydrogen molecules and one oxygen molecule.
+
+
+## Better rendering using blender are in the `Blender Renders` folder
