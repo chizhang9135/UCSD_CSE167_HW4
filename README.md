@@ -17,3 +17,4 @@ There are two water molecules, two hydrogen molecules and one oxygen molecule.
 
 
 ## Better rendering using blender are in the `Blender Renders` folder. Including pngs and blend files.
+You might need to download the texture for the plane, the file is too lagre to upload to github.
