@@ -1,7 +1,7 @@
 {
   "camera":
   {
-    "resolution": [800, 600],
+    "resolution": [1920, 1080],
     "transform": [
       {
         "lookat":
@@ -21,7 +21,7 @@
   ],
   "objects": [
     {
-      "filename": "ElectrolysisWater.ply"
+      "filename": "atoms.ply"
     }
   ]
 }
